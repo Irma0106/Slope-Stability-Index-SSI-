@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Индекс Устойчивости Склонов (SSI) в России: Руководство и Ресурсы</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutrals (Alabaster, Gunmetal) with Blue/Terra Cotta accents -->
+    <!-- Application Structure Plan: A task-oriented SPA guiding the user through understanding SSI, finding existing maps (and their limitations), and learning how to create one. The structure follows a logical query flow: "What is it?" -> "Where can I get it?" -> "How can I make it?". This is more intuitive than a direct report summary, as it addresses the user's likely goals. Key interactions include an organizational directory and an interactive chart for factor weighting to make abstract concepts tangible. -->
+    <!-- Visualization & Content Choices:
+        - Report Info: Key organizations (MCHS, Rosnedra). Goal: Organize/Compare. Viz: HTML/CSS card-based directory. Interaction: Static display with clear labels for access type. Justification: Quickly answers the "where to find" question by summarizing access hurdles. Method: HTML/Tailwind.
+        - Report Info: Weighted overlay factors (Slope, Lithology, etc.). Goal: Explain a Process. Viz: Interactive donut chart with sliders. Interaction: User adjusts sliders to see weight distribution change in real-time. Justification: Demystifies the complex concept of "weighting" in MCDA. Library: Chart.js.
+        - Report Info: Reclassification table, risk level table. Goal: Inform. Viz: Styled HTML tables and a color-coded legend. Interaction: Static display. Justification: Presents tabular data clearly and effectively. Method: HTML/Tailwind.
+        - CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F8F7F4;
+            color: #3D405B;
+        }
+        .bg-primary { background-color: #81B29A; }
+        .bg-secondary { background-color: #E07A5F; }
+        .text-primary { color: #81B29A; }
+        .text-secondary { color: #E07A5F; }
+        .border-primary { border-color: #81B29A; }
+        .border-secondary { border-color: #E07A5F; }
+        .nav-link {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .nav-link:hover {
+            color: #E07A5F;
+            transform: translateY(-2px);
+        }
+        .card {
+            background-color: #ffffff;
+            border-radius: 0.75rem;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.1);
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 450px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        /* Custom styles for sliders */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]:focus {
+            outline: none;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 8px;
+            cursor: pointer;
+            background: #e2e8f0;
+            border-radius: 5px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #81B29A;
+            cursor: pointer;
+            margin-top: -6px;
+            transition: background 0.3s ease;
+        }
+        input[type=range]:hover::-webkit-slider-thumb {
+            background: #6a9c81;
+        }
+        input[type=range]::-moz-range-track {
+            width: 100%;
+            height: 8px;
+            cursor: pointer;
+            background: #e2e8f0;
+            border-radius: 5px;
+        }
+        input[type=range]::-moz-range-thumb {
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #81B29A;
+            cursor: pointer;
+            border: none;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Header & Navigation -->
+    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex-shrink-0">
+                    <h1 class="text-xl font-bold text-slate-800">SSI в России</h1>
+                </div>
+                <nav class="hidden md:flex md:space-x-8">
+                    <a onclick="scrollToSection('section-what-is-ssi')" class="nav-link font-medium text-slate-600">Что такое SSI?</a>
+                    <a onclick="scrollToSection('section-where-to-find')" class="nav-link font-medium text-slate-600">Где найти?</a>
+                    <a onclick="scrollToSection('section-how-to-create')" class="nav-link font-medium text-slate-600">Как создать?</a>
+                    <a onclick="scrollToSection('section-recommendations')" class="nav-link font-medium text-slate-600">Рекомендации</a>
+                </nav>
+                 <div class="md:hidden">
+                    <select onchange="scrollToSection(this.value)" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                        <option selected disabled>Навигация</option>
+                        <option value="section-what-is-ssi">Что такое SSI?</option>
+                        <option value="section-where-to-find">Где найти?</option>
+                        <option value="section-how-to-create">Как создать?</option>
+                        <option value="section-recommendations">Рекомендации</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+
+        <!-- Hero Section -->
+        <section class="text-center py-12 md:py-16">
+            <h2 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">Индекс Устойчивости Склонов (SSI)</h2>
+            <p class="text-lg md:text-xl text-slate-600 max-w-3xl mx-auto">Интерактивное руководство по поиску, анализу и созданию карт оползневой опасности в России.</p>
+        </section>
+
+        <!-- Section 1: What is SSI? -->
+        <section id="section-what-is-ssi" class="py-12 md:py-16">
+            <div class="text-center mb-12">
+                <h3 class="text-3xl font-bold tracking-tight">Понимание SSI: Что это и почему это важно?</h3>
+                <p class="mt-4 text-lg text-slate-600 max-w-2xl mx-auto">Карта Индекса Устойчивости Склонов (SSI) — это не просто карта. Это прогнозный инструмент, который показывает относительную предрасположенность территории к оползням.</p>
+            </div>
+            <div class="grid md:grid-cols-3 gap-8 text-center">
+                <div class="card p-8">
+                    <div class="text-5xl mb-4">🗺️</div>
+                    <h4 class="text-xl font-semibold mb-2">Пространственный анализ</h4>
+                    <p class="text-slate-600">SSI оценивает вероятность оползней в будущем, основываясь на множестве факторов, а не измеряет устойчивость в конкретной точке.</p>
+                </div>
+                <div class="card p-8">
+                    <div class="text-5xl mb-4">📈</div>
+                    <h4 class="text-xl font-semibold mb-2">Национальная проблема</h4>
+                    <p class="text-slate-600">Оползнеопасные районы занимают около <span class="font-bold text-secondary">40% территории России</span>, что делает их оценку критически важной для безопасности.</p>
+                </div>
+                <div class="card p-8">
+                    <div class="text-5xl mb-4">🏗️</div>
+                    <h4 class="text-xl font-semibold mb-2">Инструмент планирования</h4>
+                    <p class="text-slate-600">Карты SSI необходимы для безопасного планирования землепользования, строительства инфраструктуры и разработки мер по предотвращению стихийных бедствий.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: Where to Find? -->
+        <section id="section-where-to-find" class="py-12 md:py-16 bg-white rounded-2xl">
+            <div class="text-center mb-12">
+                <h3 class="text-3xl font-bold tracking-tight">Готовые Карты: Где найти?</h3>
+                <p class="mt-4 text-lg text-slate-600 max-w-3xl mx-auto">Готовых, комплексных и общедоступных для скачивания карт SSI для всех регионов России, как правило, нет. Данные фрагментированы и находятся в ведении различных организаций.</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                
+                <div class="card p-6 flex flex-col">
+                    <h4 class="text-lg font-bold mb-2">МЧС России</h4>
+                    <p class="text-sm text-slate-500 mb-4">Министерство по чрезвычайным ситуациям</p>
+                    <p class="text-slate-600 flex-grow">Управляет "Атласом рисков" для визуализации опасностей. Основная цель - информирование и реагирование на ЧС.</p>
+                    <div class="mt-4 pt-4 border-t border-slate-200">
+                        <span class="inline-block bg-blue-100 text-blue-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">Доступ:</span>
+                        <span class="font-medium">Публичный портал (только просмотр)</span>
+                    </div>
+                </div>
+
+                <div class="card p-6 flex flex-col">
+                    <h4 class="text-lg font-bold mb-2">Роснедра / Росгеолфонд</h4>
+                    <p class="text-sm text-slate-500 mb-4">Федеральное агентство по недропользованию</p>
+                    <p class="text-slate-600 flex-grow">Хранят фундаментальные геологические данные в системе ФГИС ЕФГИ. Являются основным источником исходных данных.</p>
+                    <div class="mt-4 pt-4 border-t border-slate-200">
+                        <span class="inline-block bg-yellow-100 text-yellow-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">Доступ:</span>
+                        <span class="font-medium">Ограниченный (требуется запрос/вход)</span>
+                    </div>
+                </div>
+
+                <div class="card p-6 flex flex-col">
+                    <h4 class="text-lg font-bold mb-2">Академические институты (РАН)</h4>
+                    <p class="text-sm text-slate-500 mb-4">ГИН РАН, ИГЭ РАН и др.</p>
+                    <p class="text-slate-600 flex-grow">Проводят передовые исследования и создают детальные, но часто локализованные карты. Не имеют публичных порталов для скачивания данных.</p>
+                    <div class="mt-4 pt-4 border-t border-slate-200">
+                        <span class="inline-block bg-red-100 text-red-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">Доступ:</span>
+                        <span class="font-medium">Прямой контакт / Научное сотрудничество</span>
+                    </div>
+                </div>
+                 <div class="card p-6 flex flex-col">
+                    <h4 class="text-lg font-bold mb-2">Росгидромет</h4>
+                    <p class="text-sm text-slate-500 mb-4">Федеральная служба по гидрометеорологии</p>
+                    <p class="text-slate-600 flex-grow">Предоставляет прогнозы и предупреждения о метеоусловиях (например, сильные осадки), которые могут спровоцировать оползни.</p>
+                    <div class="mt-4 pt-4 border-t border-slate-200">
+                        <span class="inline-block bg-blue-100 text-blue-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">Доступ:</span>
+                        <span class="font-medium">Публичный портал (прогнозы)</span>
+                    </div>
+                </div>
+                 <div class="card p-6 flex flex-col">
+                    <h4 class="text-lg font-bold mb-2">Коммерческие фирмы</h4>
+                    <p class="text-sm text-slate-500 mb-4">Инженерно-геологические компании</p>
+                    <p class="text-slate-600 flex-grow">Выполняют детальные расчеты устойчивости склонов для конкретных объектов на коммерческой основе.</p>
+                    <div class="mt-4 pt-4 border-t border-slate-200">
+                        <span class="inline-block bg-green-100 text-green-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">Доступ:</span>
+                        <span class="font-medium">Коммерческие услуги (платно)</span>
+                    </div>
+                </div>
+                 <div class="card p-6 flex flex-col bg-slate-100 border-dashed">
+                    <h4 class="text-lg font-bold mb-2">Ваш собственный анализ</h4>
+                    <p class="text-sm text-slate-500 mb-4">Альтернативный подход</p>
+                    <p class="text-slate-600 flex-grow">Использовать доступные глобальные и национальные базовые данные для самостоятельного создания карты SSI.</p>
+                    <div class="mt-4 pt-4 border-t border-slate-200">
+                        <span class="inline-block bg-purple-100 text-purple-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">Требуется:</span>
+                        <span class="font-medium">Опыт в ГИС и геологии</span>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-12 text-center p-6 bg-primary/10 rounded-lg">
+                <p class="font-semibold text-primary">Вывод: для получения детальных данных наиболее эффективным путем является прямой запрос в профильные учреждения или заказ специализированного исследования. Для самостоятельной оценки можно перейти к следующему разделу.</p>
+            </div>
+        </section>
+
+        <!-- Section 3: How to Create -->
+        <section id="section-how-to-create" class="py-12 md:py-16">
+            <div class="text-center mb-12">
+                <h3 class="text-3xl font-bold tracking-tight">Создание Карты SSI Самостоятельно: Руководство</h3>
+                <p class="mt-4 text-lg text-slate-600 max-w-3xl mx-auto">Процесс создания карты SSI в ГИС (например, ArcGIS) можно разбить на несколько ключевых этапов, от сбора данных до их анализа и интерпретации.</p>
+            </div>
+
+            <!-- Step 1: Factors -->
+            <div class="mb-16">
+                <h4 class="text-2xl font-semibold text-center mb-8">Шаг 1: Сбор Данных и Ключевые Факторы</h4>
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="card p-6">
+                        <h5 class="font-bold text-lg mb-2">🏔️ Геоморфологические</h5>
+                        <ul class="list-disc list-inside text-slate-600 space-y-1">
+                            <li><span class="font-semibold">Уклон:</span> Крутизна напрямую влияет на риск.</li>
+                            <li><span class="font-semibold">Экспозиция:</span> Влияет на влажность и растительность.</li>
+                            <li><span class="font-semibold">Кривизна:</span> Контролирует сток воды.</li>
+                            <li class="mt-2 text-sm text-slate-500">Источник: Производные от ЦМР (SRTM, ASTER).</li>
+                        </ul>
+                    </div>
+                    <div class="card p-6">
+                        <h5 class="font-bold text-lg mb-2">💎 Геологические</h5>
+                        <ul class="list-disc list-inside text-slate-600 space-y-1">
+                            <li><span class="font-semibold">Литология:</span> Тип и прочность пород/грунтов.</li>
+                            <li><span class="font-semibold">Разломы:</span> Наличие тектонических нарушений.</li>
+                            <li class="mt-2 text-sm text-slate-500">Источник: Росгеолфонд, Карпинский институт.</li>
+                        </ul>
+                    </div>
+                    <div class="card p-6">
+                        <h5 class="font-bold text-lg mb-2">💧 Гидрогеологические</h5>
+                        <ul class="list-disc list-inside text-slate-600 space-y-1">
+                            <li><span class="font-semibold">Грунтовые воды:</span> Снижают прочность грунта.</li>
+                            <li><span class="font-semibold">Расстояние до рек:</span> Влияет на насыщение грунтов.</li>
+                            <li class="mt-2 text-sm text-slate-500">Источник: Местные изыскания, Росгидромет.</li>
+                        </ul>
+                    </div>
+                    <div class="card p-6">
+                        <h5 class="font-bold text-lg mb-2">☀️ Климатические</h5>
+                         <ul class="list-disc list-inside text-slate-600 space-y-1">
+                            <li><span class="font-semibold">Осадки:</span> Основной триггер оползней.</li>
+                            <li><span class="font-semibold">Сейсмичность:</span> Динамические нагрузки.</li>
+                             <li class="mt-2 text-sm text-slate-500">Источник: NASA GPM, CHIRPS, ГИН РАН.</li>
+                        </ul>
+                    </div>
+                    <div class="card p-6">
+                        <h5 class="font-bold text-lg mb-2">🌳 Покровные и Антропогенные</h5>
+                        <ul class="list-disc list-inside text-slate-600 space-y-1">
+                            <li><span class="font-semibold">Землепользование:</span> Вырубка лесов повышает риск.</li>
+                            <li><span class="font-semibold">Инфраструктура:</span> Дороги и стройки меняют рельеф.</li>
+                             <li class="mt-2 text-sm text-slate-500">Источник: Снимки Landsat, OpenStreetMap.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Analysis -->
+            <div class="mb-16">
+                 <h4 class="text-2xl font-semibold text-center mb-8">Шаг 2: Анализ в ГИС - Метод Взвешенного Наложения</h4>
+                 <div class="grid lg:grid-cols-2 gap-8 items-center">
+                    <div>
+                        <h5 class="text-xl font-semibold mb-4">Интерактивное взвешивание факторов</h5>
+                        <p class="text-slate-600 mb-6">Каждому фактору присваивается "вес" в зависимости от его важности. Сумма всех весов должна быть равна 100%. Попробуйте изменить веса, чтобы увидеть, как меняется их вклад в итоговый индекс. На практике веса определяются на основе экспертных оценок (например, методом анализа иерархий).</p>
+                        <div id="sliders-container" class="space-y-4">
+                            <!-- Sliders will be inserted here by JS -->
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="weightedOverlayChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Step 3: Reclassification -->
+             <div class="mb-16">
+                 <h4 class="text-2xl font-semibold text-center mb-8">Шаг 3: Переклассификация и Интерпретация</h4>
+                 <div class="grid lg:grid-cols-2 gap-8 items-start">
+                     <div class="card p-6">
+                         <h5 class="text-xl font-semibold mb-4">Пример переклассификации</h5>
+                         <p class="text-slate-600 mb-4">Каждый фактор переводится в общую шкалу риска (например, от 1 до 5). Ниже приведен пример для некоторых факторов.</p>
+                         <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-left text-slate-500">
+                                <thead class="text-xs text-slate-700 uppercase bg-slate-50">
+                                    <tr>
+                                        <th scope="col" class="px-4 py-3">Фактор</th>
+                                        <th scope="col" class="px-4 py-3">Значение</th>
+                                        <th scope="col" class="px-4 py-3">Риск (1-5)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="bg-white border-b">
+                                        <td rowspan="2" class="px-4 py-3 font-medium text-slate-900">Уклон</td>
+                                        <td class="px-4 py-3">0-5°</td>
+                                        <td class="px-4 py-3 font-bold text-green-600">1</td>
+                                    </tr>
+                                    <tr class="bg-white border-b">
+                                        <td class="px-4 py-3">>35°</td>
+                                        <td class="px-4 py-3 font-bold text-red-600">5</td>
+                                    </tr>
+                                     <tr class="bg-slate-50 border-b">
+                                        <td rowspan="2" class="px-4 py-3 font-medium text-slate-900">Литология</td>
+                                        <td class="px-4 py-3">Граниты (устойчивые)</td>
+                                        <td class="px-4 py-3 font-bold text-green-600">1</td>
+                                    </tr>
+                                    <tr class="bg-slate-50 border-b">
+                                        <td class="px-4 py-3">Глины (слабоустойчивые)</td>
+                                        <td class="px-4 py-3 font-bold text-red-600">5</td>
+                                    </tr>
+                                     <tr class="bg-white border-b">
+                                        <td rowspan="2" class="px-4 py-3 font-medium text-slate-900">Землепользование</td>
+                                        <td class="px-4 py-3">Лес</td>
+                                        <td class="px-4 py-3 font-bold text-green-600">1</td>
+                                    </tr>
+                                    <tr class="bg-white">
+                                        <td class="px-4 py-3">Открытый грунт</td>
+                                        <td class="px-4 py-3 font-bold text-red-600">5</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                         </div>
+                     </div>
+                      <div class="card p-6">
+                         <h5 class="text-xl font-semibold mb-4">Итоговая карта и зоны опасности</h5>
+                         <p class="text-slate-600 mb-4">Результат взвешенного наложения — это растр, который классифицируется на зоны опасности для наглядности.</p>
+                         <div class="space-y-3">
+                             <div class="flex items-center p-3 rounded-lg bg-green-600 text-white">
+                                <div class="w-1/3 font-bold">Очень низкая</div>
+                                <div class="w-2/3 text-sm">Зона, где оползни крайне маловероятны.</div>
+                             </div>
+                             <div class="flex items-center p-3 rounded-lg bg-lime-500 text-white">
+                                <div class="w-1/3 font-bold">Низкая</div>
+                                <div class="w-2/3 text-sm">Зона с низкой предрасположенностью.</div>
+                             </div>
+                             <div class="flex items-center p-3 rounded-lg bg-yellow-400 text-slate-800">
+                                <div class="w-1/3 font-bold">Умеренная</div>
+                                <div class="w-2/3 text-sm">Возможны оползни при неблагоприятных условиях.</div>
+                             </div>
+                             <div class="flex items-center p-3 rounded-lg bg-orange-500 text-white">
+                                <div class="w-1/3 font-bold">Высокая</div>
+                                <div class="w-2/3 text-sm">Требует внимания и детальных изысканий.</div>
+                             </div>
+                             <div class="flex items-center p-3 rounded-lg bg-red-600 text-white">
+                                <div class="w-1/3 font-bold">Очень высокая</div>
+                                <div class="w-2/3 text-sm">Оползни весьма вероятны.</div>
+                             </div>
+                         </div>
+                     </div>
+                 </div>
+            </div>
+        </section>
+
+        <!-- Section 4: Recommendations -->
+        <section id="section-recommendations" class="py-12 md:py-16 bg-white rounded-2xl">
+            <div class="text-center mb-12">
+                <h3 class="text-3xl font-bold tracking-tight">Заключение и Рекомендации</h3>
+                <p class="mt-4 text-lg text-slate-600 max-w-2xl mx-auto">Выбор подхода к получению данных об устойчивости склонов зависит от ваших целей, ресурсов и уровня экспертизы.</p>
+            </div>
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                 <div class="card p-6 border-t-4 border-primary">
+                    <h4 class="font-bold text-lg mb-2">Для общего обзора</h4>
+                    <p class="text-slate-600">Используйте публичные геопорталы, такие как "Атлас рисков МЧС", для визуализации зон общих рисков.</p>
+                </div>
+                <div class="card p-6 border-t-4 border-secondary">
+                    <h4 class="font-bold text-lg mb-2">Для научных целей</h4>
+                    <p class="text-slate-600">Направляйте официальные запросы в Роснедра или сотрудничайте с академическими институтами (РАН) для получения исходных данных.</p>
+                </div>
+                 <div class="card p-6 border-t-4 border-yellow-500">
+                    <h4 class="font-bold text-lg mb-2">Для проектных работ</h4>
+                    <p class="text-slate-600">Закажите детальные инженерно-геологические изыскания и расчеты у специализированных коммерческих фирм.</p>
+                </div>
+                 <div class="card p-6 border-t-4 border-purple-500">
+                    <h4 class="font-bold text-lg mb-2">Для самостоятельной оценки</h4>
+                    <p class="text-slate-600">Следуйте методологии, описанной в этом руководстве, используя доступные глобальные и национальные данные, и помните об ограничениях модели.</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+    
+    <footer class="border-t border-slate-200 mt-16">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-slate-500">
+            <p>Интерактивное приложение создано на основе анализа отчетов по устойчивости склонов. &copy; 2024</p>
+        </div>
+    </footer>
+
+    <script>
+        function scrollToSection(sectionId) {
+            const section = document.getElementById(sectionId);
+            if (section) {
+                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            const factors = [
+                { name: 'Уклон', weight: 35, color: '#81B29A' },
+                { name: 'Литология', weight: 25, color: '#E07A5F' },
+                { name: 'Осадки', weight: 15, color: '#F2CC8F' },
+                { name: 'Расстояние до рек', weight: 10, color: '#3D405B' },
+                { name: 'Землепользование', weight: 10, color: '#8E8D8A' },
+                { name: 'Прочие', weight: 5, color: '#BDBBB0' },
+            ];
+
+            const slidersContainer = document.getElementById('sliders-container');
+            const ctx = document.getElementById('weightedOverlayChart').getContext('2d');
+            let chart;
+
+            function createSliders() {
+                factors.forEach((factor, index) => {
+                    const sliderDiv = document.createElement('div');
+                    
+                    const labelDiv = document.createElement('div');
+                    labelDiv.className = 'flex justify-between items-center mb-1';
+                    
+                    const label = document.createElement('label');
+                    label.htmlFor = `slider-${index}`;
+                    label.textContent = factor.name;
+                    label.className = 'text-sm font-medium text-slate-700';
+                    
+                    const valueSpan = document.createElement('span');
+                    valueSpan.id = `slider-value-${index}`;
+                    valueSpan.textContent = `${factor.weight}%`;
+                    valueSpan.className = 'text-sm font-semibold text-primary';
+                    
+                    labelDiv.appendChild(label);
+                    labelDiv.appendChild(valueSpan);
+
+                    const slider = document.createElement('input');
+                    slider.type = 'range';
+                    slider.id = `slider-${index}`;
+                    slider.min = 0;
+                    slider.max = 100;
+                    slider.value = factor.weight;
+                    slider.dataset.index = index;
+
+                    sliderDiv.appendChild(labelDiv);
+                    sliderDiv.appendChild(slider);
+                    slidersContainer.appendChild(sliderDiv);
+
+                    slider.addEventListener('input', handleSliderChange);
+                });
+            }
+
+            function handleSliderChange(e) {
+                const changedIndex = parseInt(e.target.dataset.index);
+                const newValue = parseInt(e.target.value);
+                const oldValue = factors[changedIndex].weight;
+                const diff = newValue - oldValue;
+
+                factors[changedIndex].weight = newValue;
+                
+                let totalWeight = factors.reduce((sum, f) => sum + f.weight, 0);
+
+                if (totalWeight > 100) {
+                    let overage = totalWeight - 100;
+                    // Distribute overage proportionally to other sliders
+                    for (let i = 0; i < factors.length; i++) {
+                        if (i !== changedIndex && factors[i].weight > 0) {
+                            let reduction = Math.min(factors[i].weight, overage * (factors[i].weight / (totalWeight - newValue)));
+                            factors[i].weight -= Math.round(reduction);
+                            overage -= reduction;
+                        }
+                    }
+                }
+                
+                // Normalize to 100%
+                 let currentTotal = factors.reduce((sum, f) => sum + f.weight, 0);
+                 if(currentTotal !== 100) {
+                    const lastFactorIndex = factors.length - 1;
+                    if (changedIndex !== lastFactorIndex && factors[lastFactorIndex].weight > (100-currentTotal)) {
+                         factors[lastFactorIndex].weight -= (currentTotal - 100);
+                    } else { // Fallback if last slider can't compensate
+                        let nonChangedSum = 0;
+                        factors.forEach((f, i) => { if(i !== changedIndex) nonChangedSum += f.weight });
+                        if(nonChangedSum > 0){
+                           const scale = (100 - newValue) / nonChangedSum;
+                           factors.forEach((f, i) => { if(i !== changedIndex) f.weight = Math.round(f.weight * scale) });
+                        }
+                    }
+                 }
+                 // Final normalization pass to ensure sum is exactly 100 due to rounding
+                 currentTotal = factors.reduce((sum, f) => sum + f.weight, 0);
+                 if(currentTotal !== 100) {
+                     factors[0].weight += 100 - currentTotal;
+                 }
+
+
+                updateUI();
+                updateChart();
+            }
+
+            function updateUI() {
+                factors.forEach((factor, index) => {
+                    document.getElementById(`slider-${index}`).value = factor.weight;
+                    document.getElementById(`slider-value-${index}`).textContent = `${factor.weight}%`;
+                });
+            }
+
+            function createChart() {
+                chart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: factors.map(f => f.name),
+                        datasets: [{
+                            label: 'Вес фактора',
+                            data: factors.map(f => f.weight),
+                            backgroundColor: factors.map(f => f.color),
+                            borderColor: '#F8F7F4',
+                            borderWidth: 3
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                   boxWidth: 15,
+                                   padding: 15,
+                                },
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed !== null) {
+                                            label += context.parsed + '%';
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        cutout: '50%',
+                    }
+                });
+            }
+
+            function updateChart() {
+                chart.data.datasets[0].data = factors.map(f => f.weight);
+                chart.update();
+            }
+
+            createSliders();
+            createChart();
+        });
+    </script>
+</body>
+</html>
